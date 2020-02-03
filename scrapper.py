@@ -3,50 +3,17 @@ import requests
 from bs4 import BeautifulSoup as soup
 
 
-# my_url = "https://www.congress.gov/search?q=%7B%22subject%22%3A%22Crime+and+Law+Enforcement%22%7D&searchResultViewType=expanded&KWICView=false&pageSize=100&page=1"
-# my_url = "https://www.congress.gov/search?q={%22subject%22:%22Crime+and+Law+Enforcement%22}&pageSize=100&page=2&searchResultViewType=expanded&KWICView=false"
-my_url = "https://www.congress.gov/search?pageSort=dateOfIntroduction:desc&searchResultViewType=compact"
-
-raw_html = requests.get(my_url)
-
-root = soup(raw_html.content, "html.parser")
-
-main = root.find("div", attrs={'id': 'main'})
-
-bill_roots = main.findAll("span", attrs={'li': 'compact'})
-
-
 class Node(object):
-    def __init__(self, val=None, parent=None, children=None, *args, **kwargs):
-
-        self.type = str
-        for key, value in kwargs.items():
-            if key == 'type':
-                if set((value)) <= set((str, object)):
-                    self.type = value
-                else:
-                    raise TypeError("Can not instantiate a 'Node' of type: " + value)
-
-        self.val = val if val is not None and isinstance(val, self.type) else str(val)
-        self.parent = parent if parent is not None and isinstance(parent, list) else []
-        self.children = children if children is not None and isinstance(children, list) else []
-        super(object, self).__init__(*args, **kwargs)
+    def __init__(self, val=None, parent=None, children=None, **kwargs):
+        self.val = val
+        self.parent = parent
+        self.children = children if isinstance(children, list) else []
+        super(object, self).__init__(**kwargs)
 
     def __str__(self):
-        """
-        Defines behavior for when str() is called on an instance of a 'Node'.
-        """
         return self.val.__str__()
 
     def __repr__(self):
-        """
-        Defines behavior for when repr() is called on an instance
-        of a 'Node'. The major difference between str() and repr()
-        is intended audience. repr() is intended to produce output
-        that is mostly machine-readable (in many cases, it could
-        be valid Python code even), whereas str() is intended to
-        be human-readable.
-        """
         return '<Node %r>' % self.val
 
     def __dir__(self):
@@ -58,17 +25,7 @@ class Node(object):
         classes if you redefine __getattr__ or __getattribute__ or
         are otherwise dynamically generating attributes.
         """
-        pass
-
-    def __sizeof__(self):
-        """
-        Defines behavior for when sys.getsizeof() is called on an
-        instance of a 'Node'. This should return the size of
-        your object, in bytes. This is generally more useful
-        for Python classes implemented in C extensions,
-        but it helps to be aware of it.
-        """
-        pass
+        return
 
     def __nonzero__(self):
         """
@@ -77,71 +34,134 @@ class Node(object):
         whether you would want to consider the instance to be True
         or False.
         """
-        pass
-
-    def __len__(self):
-        return len(self.val)
+        return len(self.children) >= 1
 
     def __getitem__(self, key):
-        # if key is of invalid type or value, the list values will raise the error
-        return self.val[key]
+        raise NotImplementedError
 
     def __setitem__(self, key, value):
-        self.val[key] = value
+        raise NotImplementedError
 
     def __delitem__(self, key):
-        del self.val[key]
+        raise NotImplementedError
+
+    def __len__(self):
+        return len(self.children)
 
     def __iter__(self):
-        return iter(self.val)
+        return iter(self.children)
 
     def __reversed__(self):
-        return reversed(self.val)
+        return reversed(self.children)
 
-    def append(self, val):
-        self.val.append(val)
+    def append(self, child):
+        self.children.append(child)
 
     def head(self):
-        # get the first element
-        return self.val[0]
+        return self.children[0]
 
     def tail(self):
-        # get all elements after the first
-        return self.values[1:]
+        return self.children[1:]
 
     def init(self):
-        # get elements up to the last
-        return self.values[:-1]
+        return self.children[:-1]
 
     def last(self):
-        # get last element
-        return self.values[-1]
+        return self.children[-1]
 
     def drop(self, n):
-        # get all elements except first n
-        return self.values[n:]
+        return self.children[n:]
 
     def take(self, n):
-        # get first n elements
-        return self.values[:n]
+        return self.children[:n]
 
 
-class FunctionalList:
-    '''A class wrapping a list with some extra functional magic, like head,
-    tail, init, last, drop, and take.'''
+class Bill:
+    link = ""
+    title = ""
+    sponsor = {
+        'name': "",
+        'link': ""
+    }
+    introduced = ""
+    cosponsors = {
+        'link': "",
+        'all': [
+            {
+                'name': "",
+                'link': ""
+            }
+        ]
+    }
+    committees = ""
+    latest_action = ""
+    all_actions_link = ""
+    tracker = {
+        'introduced': True,
+        'Passed House': False,
+        'Passed Senate': False,
+        'To President': False,
+        'Became Law': False
+    }
 
-bill_headers_a = [bill_header.a for bill_header in bill_roots]
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-bill_main_links = [bill_header.get('href') for bill_header in bill_headers_a]
 
-nav = root.find("div", attrs={'id': 'nav'})
+def main():
+
+    def getSoup(url):
+
+        raw_html = requests.get(url)
+
+        return soup(raw_html.content, "html.parser")
+
+    # def getBillsOnPage():
+    url = "https://www.congress.gov/search?pageSize=100&page=2"
+    # url = "https://www.congress.gov/search?pageSize=250&page=2"
+    # url = "https://www.congress.gov/search?pageSort=dateOfIntroduction%3A" + "desc" if True else "asc" + "&s=2&q=%7B%22congress%22%3A%22all%22%2C%22source%22%3A%22all%22%7D&pageSize=250&page=2"
+    print('url: ' + url)
+
+    root_soup = getSoup(url)
+
+    main = root_soup.find("div", attrs={'id': 'main'})
+
+    bill_data_containers = main.findAll("li", attrs={'class': 'compact'})
+    print("len(bill_data_containers): " + str(len(bill_data_containers)))
+
+    bill_data_links = [bill_data_container.a.get('href') for bill_data_container in bill_data_containers]
+    print('bill_main_links[0]: ' + str(bill_data_links[0]))
+
+    bill_data_titles = [bill_data_container.find("span", attrs={'class': 'result-title'}).text for bill_data_container in bill_data_containers]
+    print('bill_data_titles[0]: ' + str(bill_data_titles[0]))
+
+    bill_data_sponsor = [bill_data_container.findAll("span", attrs={'class': 'result-item'})[0].span.a.text for bill_data_container in bill_data_containers]
+    print('bill_data_sponsor[0]: ' + str(bill_data_sponsor[0]))
+
+    bill_data_sponsor_links = ["https://www.congress.gov" + bill_data_container.findAll("span", attrs={'class': 'result-item'})[0].span.a.get('href') for bill_data_container in bill_data_containers]
+    print('bill_data_sponsor_links[0]: ' + str(bill_data_sponsor_links[0]))
+
+    bill_data_introduced = [str(bill_data_container.findAll("span", attrs={'class': 'result-item'})[0].span.a.nextSibling)[13:-2] for bill_data_container in bill_data_containers]
+    print('bill_data_introduced[0]: ' + str(bill_data_introduced[0]))
+
+    bill_data_cosponsors_counts = [bill_data_container.findAll("span", attrs={'class': 'result-item'})[0].findAll('a')[1].text for bill_data_container in bill_data_containers]
+    print('bill_data_cosponsors_counts[0]: ' + str(bill_data_cosponsors_counts[0]))
+
+    bill_data_cosponsors_links = [bill_data_container.findAll("span", attrs={'class': 'result-item'})[0].findAll('a')[1].get('href') for bill_data_container in bill_data_containers]
+    print('bill_data_cosponsors_links[0]: ' + str(bill_data_cosponsors_links[0]))
+
+    bill_data_committees = [bill_data_container.findAll("span", attrs={'class': 'result-item'})[1].span.text for bill_data_container in bill_data_containers]
+    print('bill_data_committees[0]: ' + str(bill_data_committees[0]))
+
+    bill_data_latest_action = [bill_data_container.findAll("span", attrs={'class': 'result-item'})[2].span.a.previousSibling for bill_data_container in bill_data_containers]
+    print('bill_data_latest_action[0]: ' + str(bill_data_latest_action[0]))
+
+    bill_data_all_actions_links = [bill_data_container.findAll("span", attrs={'class': 'result-item'})[2].span.a.get('href') for bill_data_container in bill_data_containers]
+    print('bill_data_all_actions_links[0]: ' + str(bill_data_all_actions_links[0]))
+
+    # # getBillsOnPage(1)
+    # getBillsOnPage()
+
 
 if __name__ == "__main__":
-    # print("len(bill_headers): " + str(len(bill_headers)))
-    # print("bill_headers[" + str(len(bill_headers) - 1) + "]: " + str(bill_headers[-1]))
-    test_root = Node("some@cool.link")
-    print(test_root)
-    print("len(bill_main_links): " + str(len(bill_headers_a)))
-    print("bill_main_links[0]: " + str(bill_headers_a[0]))
-    print("len(bill_main_links): " + str(len(bill_main_links)))
-    print("bill_main_links[0]: " + str(bill_main_links[0]))
+    main()
